@@ -48,10 +48,13 @@ type GhostReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.2/pkg/reconcile
 func (r *GhostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-	log.Info("Reconciling Ghost")
-	log.Info("Reconciliation complete")
+	ghost := &blogv1.Ghost{}
+	if err := r.Get(ctx, req.NamespacedName, ghost); err != nil {
+		log.Error(err, "Faled to get Ghost")
+	}
 
-	// TODO(user): your logic here
+	log.Info("Reconciling Ghost", "imageTag", ghost.Spec.ImageTag, "team", ghost.ObjectMeta.Namespace)
+	log.Info("Reconciliation complete")
 
 	return ctrl.Result{}, nil
 }

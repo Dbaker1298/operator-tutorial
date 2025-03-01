@@ -26,7 +26,7 @@ import (
 // GhostSpec defines the desired state of Ghost.
 type GhostSpec struct {
 	//+kubebuilder:validation:Pattern='^[-a-z0-9]*$'
-  ImageTag string `json:"imageTag"`
+	ImageTag string `json:"imageTag"`
 }
 
 // GhostStatus defines the observed state of Ghost.
