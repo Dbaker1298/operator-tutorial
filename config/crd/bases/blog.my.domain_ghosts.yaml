@@ -39,10 +39,11 @@ spec:
           spec:
             description: GhostSpec defines the desired state of Ghost.
             properties:
-              foo:
-                description: Foo is an example field of Ghost. Edit ghost_types.go
-                  to remove/update
+              imageTag:
+                pattern: '''^[-a-z0-9]*$'''
                 type: string
+            required:
+            - imageTag
             type: object
           status:
             description: GhostStatus defines the observed state of Ghost.
