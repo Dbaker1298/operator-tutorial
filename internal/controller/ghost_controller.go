@@ -66,6 +66,7 @@ func (r *GhostReconciler) addOrUpdateDeployment(ctx context.Context, ghost *blog
 		LabelSelector: labelSelector.AsSelector(),
 	})
 	if err != nil {
+		log.Error(err, "Failed to list deployments")
 		return err
 	}
 
@@ -75,7 +76,8 @@ func (r *GhostReconciler) addOrUpdateDeployment(ctx context.Context, ghost *blog
 		desiredDeployment := generateDesiredDeployment(ghost)
 
 		// Compare relevant fields to determine if an update is needed
-		if existingDeployment.Spec.Template.Spec.Containers[0].Image != desiredDeployment.Spec.Template.Spec.Containers[0].Image {
+		if existingDeployment.Spec.Template.Spec.Containers[0].Image !=
+			desiredDeployment.Spec.Template.Spec.Containers[0].Image {
 			// Fields have changed, update the deployment
 			existingDeployment.Spec = desiredDeployment.Spec
 			if err := r.Update(ctx, existingDeployment); err != nil {
@@ -92,9 +94,11 @@ func (r *GhostReconciler) addOrUpdateDeployment(ctx context.Context, ghost *blog
 	// Deployment does not exist, create it
 	desiredDeployment := generateDesiredDeployment(ghost)
 	if err := controllerutil.SetControllerReference(ghost, desiredDeployment, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on Deployment")
 		return err
 	}
 	if err := r.Create(ctx, desiredDeployment); err != nil {
+		log.Error(err, "Failed to create Deployment")
 		return err
 	}
 	r.recoder.Event(ghost, corev1.EventTypeNormal, "DeploymentCreated", "Deployment created successfully")
@@ -217,13 +221,6 @@ func generateDesiredPVC(ghost *blogv1.Ghost, pvcName string) *corev1.PersistentV
 	}
 }
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Ghost object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.2/pkg/reconcile
 func (r *GhostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
