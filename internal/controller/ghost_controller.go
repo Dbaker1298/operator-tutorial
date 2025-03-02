@@ -48,6 +48,10 @@ const (
 // +kubebuilder:rbac:groups=blog.my.domain,resources=ghosts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=blog.my.domain,resources=ghosts/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=blog.my.domain,resources=ghosts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=blog.example.com,resources=ghosts/events,verbs=get;list;watch;create;update;patch
+// +kubebuilder:rbac:groups="",resources=persistentvolumeclaims,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;update;patch;delete
 
 func (r *GhostReconciler) addPvcIfNotExists(ctx context.Context, ghost *blogv1.Ghost) error {
 	log := log.FromContext(ctx)
