@@ -60,8 +60,12 @@ const (
 func (r *GhostReconciler) addServiceIfNotExists(ctx context.Context, ghost *blogv1.Ghost) error {
 	log := log.FromContext(ctx)
 	service := &corev1.Service{}
-	err := r.Get(ctx, client.ObjectKey{Namespace: ghost.ObjectMeta.Namespace, Name: svcNamePrefix + ghost.ObjectMeta.Namespace}, service)
+	err := r.Get(ctx, client.ObjectKey{
+		Namespace: ghost.ObjectMeta.Namespace,
+		Name:      svcNamePrefix + ghost.ObjectMeta.Namespace,
+	}, service)
 	if err != nil && client.IgnoreNotFound(err) != nil {
+		log.Error(err, "Failed to get Service")
 		return err
 	}
 
@@ -72,11 +76,13 @@ func (r *GhostReconciler) addServiceIfNotExists(ctx context.Context, ghost *blog
 	// Service does not exist, create it
 	desiredService := generateDesiredService(ghost)
 	if err := controllerutil.SetControllerReference(ghost, desiredService, r.Scheme); err != nil {
+		log.Error(err, "Failed to set controller reference on Service")
 		return err
 	}
 
 	// Service does not exist, create it
 	if err := r.Create(ctx, desiredService); err != nil {
+		log.Error(err, "Failed to create Service")
 		return err
 	}
 	r.recoder.Event(ghost, corev1.EventTypeNormal, "ServiceCreated", "Service created successfully")
