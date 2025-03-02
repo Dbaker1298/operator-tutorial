@@ -277,17 +277,99 @@ func generateDesiredPVC(ghost *blogv1.Ghost, pvcName string) *corev1.PersistentV
 	}
 }
 
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.2/pkg/reconcile
+// Function to add a condition to the GhostStatus
+func addCondition(status *blogv1.GhostStatus, condType string, statusType metav1.ConditionStatus, reason, message string) {
+	for i, existingCondition := range status.Conditions {
+		if existingCondition.Type == condType {
+			// Condition already exists, update it
+			status.Conditions[i].Status = statusType
+			status.Conditions[i].Reason = reason
+			status.Conditions[i].Message = message
+			status.Conditions[i].LastTransitionTime = metav1.Now()
+			return
+		}
+	}
+
+	// Condition does not exist, add it
+	condition := metav1.Condition{
+		Type:               condType,
+		Status:             statusType,
+		Reason:             reason,
+		Message:            message,
+		LastTransitionTime: metav1.Now(),
+	}
+	status.Conditions = append(status.Conditions, condition)
+}
+
+// Function to update the status of the Ghost object
+func (r *GhostReconciler) updateStatus(ctx context.Context, ghost *blogv1.Ghost) error {
+	// Update the status of the Ghost object
+	if err := r.Status().Update(ctx, ghost); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (r *GhostReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
 	ghost := &blogv1.Ghost{}
 	if err := r.Get(ctx, req.NamespacedName, ghost); err != nil {
-		log.Error(err, "Faled to get Ghost")
+		log.Error(err, "Failed to get Ghost in reconcile")
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-
+	// Initialize completion status flags
+	// Add or update the namespace first
+	pvcReady := false
+	deploymentReady := false
+	serviceReady := false
 	log.Info("Reconciling Ghost", "imageTag", ghost.Spec.ImageTag, "team", ghost.ObjectMeta.Namespace)
+	// Add or update PVC
+	if err := r.addPvcIfNotExists(ctx, ghost); err != nil {
+		log.Error(err, "Failed to add PVC for Ghost")
+		addCondition(&ghost.Status, "PVCNotReady", metav1.ConditionFalse, "PVCNotReady", "Failed to add PVC for Ghost")
+		return ctrl.Result{}, err
+	} else {
+		pvcReady = true
+	}
+	// Add or update Deployment
+	if err := r.addOrUpdateDeployment(ctx, ghost); err != nil {
+		log.Error(err, "Failed to add or update Deployment for Ghost")
+		addCondition(
+			&ghost.Status,
+			"DeploymentNotReady",
+			metav1.ConditionFalse,
+			"DeploymentNotReady",
+			"Failed to add or update Deployment for Ghost",
+		)
+		return ctrl.Result{}, err
+	} else {
+		deploymentReady = true
+	}
+	// Add or update Service
+	if err := r.addServiceIfNotExists(ctx, ghost); err != nil {
+		log.Error(err, "Failed to add Service for Ghost")
+		addCondition(
+			&ghost.Status,
+			"ServiceNotReady",
+			metav1.ConditionFalse,
+			"ServiceNotReady",
+			"Failed to add Service for Ghost",
+		)
+		return ctrl.Result{}, err
+	} else {
+		serviceReady = true
+	}
+	// Check if all subresources are ready
+	if pvcReady && deploymentReady && serviceReady {
+		// Add your desired condition when all subresources are ready
+		addCondition(&ghost.Status, "GhostReady", metav1.ConditionTrue, "AllSubresourcesReady", "All subresources are ready")
+	}
 	log.Info("Reconciliation complete")
+	if err := r.updateStatus(ctx, ghost); err != nil {
+		log.Error(err, "Failed to update Ghost status in reconcile function")
+		return ctrl.Result{}, err
+	}
 
 	return ctrl.Result{}, nil
 }

@@ -25,14 +25,13 @@ import (
 
 // GhostSpec defines the desired state of Ghost.
 type GhostSpec struct {
-	//+kubebuilder:validation:Pattern='^[-a-z0-9]*$'
+	// +kubebuilder:validation:Pattern='^[-a-z0-9]*$'
 	ImageTag string `json:"imageTag"`
 }
 
 // GhostStatus defines the observed state of Ghost.
 type GhostStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 }
 
 // +kubebuilder:object:root=true
